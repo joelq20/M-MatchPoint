@@ -10,7 +10,12 @@ NOTIFICATIONS_FILE = Path(__file__).resolve().parent / "notifications.json"
 NOTIFICATIONS_PER_PAGE = 5
 
 
-def _read_notifications() -> list[dict]:
+def _leer_notificaciones() -> list[dict]:
+    """Precondición: el archivo, si existe, debe contener JSON legible.
+
+    Postcondición: devuelve una lista de diccionarios; si el archivo no existe,
+    devuelve una lista vacía. Propaga errores de lectura, JSON o estructura.
+    """
     # La ausencia del archivo equivale a un historial vacío; el primer aviso lo crea.
     if not NOTIFICATIONS_FILE.exists():
         return []
@@ -25,41 +30,52 @@ def _read_notifications() -> list[dict]:
     return notifications
 
 
-def add_notification(event: str, reservation: dict) -> None:
+def agregar_notificacion(evento: str, reserva: dict) -> None:
+    """Precondición: ``evento`` es texto y ``reserva`` contiene los datos del
+    turno que se quiere registrar.
+
+    Postcondición: agrega el aviso al historial y lo guarda en el JSON. Propaga
+    errores de lectura o escritura para que quien llama pueda informarlos.
+    """
     # Conserva los avisos previos y agrega los datos relevantes de la reserva.
-    notifications = _read_notifications()
-    notifications.append(
+    notificaciones = _leer_notificaciones()
+    notificaciones.append(
         {
-            "event": event,
-            "username": reservation.get("username", "Usuario desconocido"),
-            "court_name": reservation.get("court_name", "Cancha desconocida"),
-            "date": reservation.get("date", ""),
-            "time": reservation.get("time", ""),
+            "event": evento,
+            "username": reserva.get("username", "Usuario desconocido"),
+            "court_name": reserva.get("court_name", "Cancha desconocida"),
+            "date": reserva.get("date", ""),
+            "time": reserva.get("time", ""),
             "created_at": datetime.now().isoformat(timespec="seconds"),
         }
     )
     # Se guarda el historial completo para no descartar eventos anteriores.
     with NOTIFICATIONS_FILE.open("w", encoding="utf-8") as file:
-        json.dump(notifications, file, ensure_ascii=False, indent=4)
+        json.dump(notificaciones, file, ensure_ascii=False, indent=4)
         file.write("\n")
 
 
-def show_admin_notifications() -> None:
+def mostrar_notificaciones_admin() -> None:
+    """Precondición: ninguna; intenta leer el historial de notificaciones.
+
+    Postcondición: muestra las notificaciones paginadas y permite regresar al
+    menú. Si no puede leer el archivo, informa el error y vuelve sin modificarlo.
+    """
     try:
-        notifications = _read_notifications()
+        notificaciones = _leer_notificaciones()
     except (OSError, json.JSONDecodeError, ValueError) as error:
         # Informa el problema y vuelve al menú sin interrumpir el flujo administrativo.
         print(f"No se pudieron cargar las notificaciones: {error}")
         return
 
-    if not notifications:
+    if not notificaciones:
         print("No hay notificaciones nuevas por ahora.")
         return
 
     # Las páginas se cuentan desde las más recientes hacia las más antiguas.
     pagina = 0
     total_paginas = (
-        len(notifications) + NOTIFICATIONS_PER_PAGE - 1
+        len(notificaciones) + NOTIFICATIONS_PER_PAGE - 1
     ) // NOTIFICATIONS_PER_PAGE
     # La plantilla muestra solo los controles válidos para la página actual.
     plantilla = """
@@ -82,9 +98,9 @@ Página {{ pagina }} de {{ total_paginas }}
 
     while True:
         # Calcula el segmento de cinco avisos y lo invierte para mostrar el más nuevo primero.
-        fin = len(notifications) - pagina * NOTIFICATIONS_PER_PAGE
+        fin = len(notificaciones) - pagina * NOTIFICATIONS_PER_PAGE
         inicio = max(0, fin - NOTIFICATIONS_PER_PAGE)
-        pagina_actual = list(reversed(notifications[inicio:fin]))
+        pagina_actual = list(reversed(notificaciones[inicio:fin]))
         print(
             Template(plantilla).render(
                 notificaciones=pagina_actual,

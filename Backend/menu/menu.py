@@ -8,18 +8,23 @@ from jinja2 import Template
 
 #Importaciones de archivos locales
 from reserve import (
-    cancel_reservation,
-    court_list,
-    show_all_courts,
-    user_reservations,
+    cancelar_reserva,
+    court_lista,
+    mostrar_all_courts,
+    user_reservas,
 )
 from user_account import user_account
 
 
 # Muestra las reservas del usuario y permite cancelar una; 0 vuelve sin cambios.
 def cancel_court(user: dict) -> None:
+    """Precondición: ``user`` es el usuario autenticado y tiene un ID válido.
+
+    Postcondición: cancela y conserva en el historial la reserva activa elegida;
+    si se elige 0, la entrada es inválida o ocurre un error, regresa sin cancelar.
+    """
     try:
-        reservas = user_reservations(user)
+        reservas = user_reservas(user)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"No se pudieron cargar tus reservas: {error}")
         return
@@ -46,7 +51,7 @@ TUS RESERVAS ACTIVAS
         return
 
     try:
-        cancel_reservation(user, numero)
+        cancelar_reserva(user, numero)
     except ValueError as error:
         print(f"No se pudo cancelar la reserva: {error}")
         return
@@ -57,7 +62,14 @@ TUS RESERVAS ACTIVAS
     print("RESERVA CANCELADA. EL TURNO VOLVIÓ A ESTAR DISPONIBLE.")
     return
 
+
 def menu(user: list[dict]):
+    """Precondición: ``user`` contiene al menos el diccionario del usuario
+    autenticado en la posición 0.
+
+    Postcondición: muestra el menú y deriva cada opción a su función; termina
+    cuando el usuario selecciona cerrar sesión.
+    """
 
     usuario = user[0]
 
@@ -90,11 +102,11 @@ def menu(user: list[dict]):
 
         match opcion:
             case 1:
-                court_list(usuario)
+                court_lista(usuario)
             case 2:
                 cancel_court(usuario)
             case 3:
-                show_all_courts()
+                mostrar_all_courts()
             case 4:
                 user_account(usuario)
             case 5:

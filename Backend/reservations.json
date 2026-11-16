@@ -61,5 +61,14 @@
         "date": "2026-12-15",
         "time": "09:00",
         "status": "active"
+    },
+    {
+        "user_id": 363713859,
+        "username": "laucha",
+        "court_id": 62654,
+        "court_name": "open house pádel",
+        "date": "2008-01-21",
+        "time": "16:00",
+        "status": "active"
     }
 ]

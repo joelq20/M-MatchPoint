@@ -9,10 +9,14 @@ from reader import read_admin
 from reader import read_courts
 from writer import write_admin
 from writer import write_courts
-from notifications import show_admin_notifications
+from notifications import mostrar_notificaciones_admin
 
 def validar_dni()-> int:
-    """Solicita un DNI único de 7 u 8 dígitos entre los administradores guardados."""
+    """Precondición: el archivo de administradores puede leerse.
+
+    Postcondición: devuelve un DNI entero único de 7 u 8 dígitos; sigue
+    solicitándolo hasta recibir uno válido.
+    """
 
     data = read_admin() # ahora data poseea todo el contenido de disccionarios 
 
@@ -37,11 +41,15 @@ def validar_dni()-> int:
 
 
 def validar_name():
-    """Solicita un nombre que contenga únicamente letras."""
+    """Precondición: ninguna; solicita un nombre por consola.
+
+    Postcondición: devuelve el nombre sin espacios externos si contiene solo
+    letras; en caso contrario, vuelve a solicitarlo.
+    """
 
     while True:
 
-        name = str(input("INGRESE SU NOMBRE:  ")).strip()
+        name = input("INGRESE SU NOMBRE:  ").strip()
         if name.isalpha():
             return name
         
@@ -50,7 +58,11 @@ def validar_name():
             
 
 def validar_psw():
-    """Solicita una contraseña de seis caracteres que combine letras y números."""
+    """Precondición: ninguna; solicita una contraseña por consola.
+
+    Postcondición: devuelve una contraseña de seis caracteres con al menos una
+    letra y un número; en caso contrario, vuelve a solicitarla.
+    """
 
     while True:
 
@@ -71,7 +83,11 @@ def validar_psw():
             print("X - ERROR - CONTRASEÑA DEMASIADO CORTA - X")
 
 def choose_court():
-    """Muestra la cancha seleccionada y devuelve su ID para asociarla al administrador."""
+    """Precondición: el archivo de canchas puede leerse.
+
+    Postcondición: muestra una cancha existente y devuelve su ID para asociarla
+    al administrador; repite la solicitud ante IDs inválidos.
+    """
     data = read_courts() # vuelve a llamar al json correspondiente 
 
 
@@ -105,7 +121,11 @@ def choose_court():
 
             
 def mostrar_admin_courts() -> None:
-    """Lista las canchas con sus datos principales sin modificar el JSON."""
+    """Precondición: ninguna; intenta leer el archivo de canchas.
+
+    Postcondición: muestra las canchas sin modificarlas y espera 0 para volver;
+    si falla la lectura, informa el error y regresa.
+    """
 
     try:
         courts = read_courts()
@@ -120,7 +140,8 @@ def mostrar_admin_courts() -> None:
 {% for cancha in canchas %}
 ID: {{ cancha.id }}
 CANCHA: {{ cancha.data | default([]) | join(', ') | upper }}
-HORARIOS: {{ cancha.hs | default([]) | join(', ') | upper }}
+HORARIO: {{ cancha.apertura }}:00 a {{ cancha.cierre }}:00
+DIAS: {{ cancha.dias_abiertos | join(', ') | upper }}
 TELÉFONO: {{ cancha.phone | default([]) | join(', ') }}
 ESTADO: {{ "HABILITADA" if cancha.available else "NO DISPONIBLE" }}
 -------------------------------------------------------------------
@@ -133,7 +154,11 @@ ESTADO: {{ "HABILITADA" if cancha.available else "NO DISPONIBLE" }}
 
 
 def administrar_admin_courts() -> None:
-    """Permite elegir una cancha, confirmar el cambio de estado y guardarlo."""
+    """Precondición: el archivo contiene canchas con disponibilidad booleana.
+
+    Postcondición: si el administrador confirma, invierte y guarda el estado de
+    la cancha elegida; si cancela o ocurre un error, informa y regresa.
+    """
 
     try:
         courts = read_courts()
@@ -208,7 +233,11 @@ ESTADO ACTUAL: {{ "HABILITADA" if cancha.available else "BLOQUEADA" }}
 
 
 def admin_menu(admin: dict) -> None:
-    """Presenta las opciones del administrador y dirige cada selección."""
+    """Precondición: ``admin`` es el administrador autenticado.
+
+    Postcondición: dirige las opciones disponibles y regresa al seleccionar
+    cerrar sesión. La consulta administrativa de reservas sigue provisional.
+    """
     plantilla = """
 ===================================================================
                MATCH POINT - MENÚ ADMINISTRATIVO
@@ -239,7 +268,7 @@ BIENVENIDO, {{ name | upper }}
                 # Esta sección todavía es provisional y no consulta reservas.
                 print("La consulta de reservas todavía no está implementada, falta definir.")
             case 4:
-                show_admin_notifications()
+                mostrar_notificaciones_admin()
             case 5:
                 print("CERRANDO SESIÓN ADMINISTRATIVA.")
                 return
@@ -248,7 +277,11 @@ BIENVENIDO, {{ name | upper }}
 
 
 def iniciar_sesion_admin() -> dict | None:
-    """Comprueba DNI y contraseña; devuelve el administrador autenticado o None."""
+    """Precondición: el archivo de administradores puede leerse.
+
+    Postcondición: devuelve el registro si coinciden DNI y contraseña; en caso
+    de credenciales incorrectas o error de lectura, informa y devuelve None.
+    """
 
     try:
         data = read_admin()
@@ -281,7 +314,12 @@ def iniciar_sesion_admin() -> dict | None:
     return admin
 
 def registro_admin():
-    """Recopila los datos del nuevo administrador, lo asocia a una cancha y lo guarda."""
+    """Precondición: los datos solicitados son válidos y los archivos necesarios
+    de administradores y canchas pueden leerse y escribirse.
+
+    Postcondición: agrega y devuelve el administrador asociado a una cancha;
+    propaga errores de lectura o escritura.
+    """
     dni= validar_dni()
     name = validar_name()
     psw = validar_psw()
@@ -306,7 +344,11 @@ def registro_admin():
     return new_admin
 
 def admin_menu_login():
-    """Muestra el acceso administrativo para registrar, iniciar sesión o volver."""
+    """Precondición: ninguna; presenta el menú de acceso administrativo.
+
+    Postcondición: regresa al menú principal al salir, tras una sesión exitosa o
+    después de agotar los tres intentos de inicio de sesión.
+    """
     plantilla = """
 --------------------------------------------------------
                 LOGIN ADMINISTRATIVO

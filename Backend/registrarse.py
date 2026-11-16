@@ -117,7 +117,6 @@ def cuenta_nueva() -> list[dict] | None:
     lugar = pedir_texto_obligatorio(
         "Ingrese la ciudad donde reside actualmente: "
     )
-# te falta cambia nombres y unos reckels adicionales  NO OLVIDAR
     new_usuario = {
         "id"  : id_usuario,
         "username": username,

@@ -10,8 +10,15 @@
         "phone": [
             "02254 61-1686"
         ],
-        "hs": [
-            "abierto de 9am a 20pm"
+        "apertura": 9,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes",
+            "sábado"
         ],
         "available": true,
         "info": "Este predio de padel cuenta con una tienda de accesorios, buena ubicacón y atención.",
@@ -31,9 +38,14 @@
         "phone": [
             "no disponible"
         ],
-        "hs": [
-            "abierto de 9am a 20pm",
-            "lunes a viernes"
+        "apertura": 9,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes"
         ],
         "available": true,
         "info": "Este predio de padel cuenta con una tienda de accesorios, buena ubicacón y atención.",
@@ -53,9 +65,15 @@
         "phone": [
             "02254 44-7023"
         ],
-        "hs": [
-            "abierto de 10am a 20pm",
-            "lunes a sabados"
+        "apertura": 10,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes",
+            "sábado"
         ],
         "available": true,
         "info": "Este predio de padel cuenta con una tienda de accesorios, buena ubicacón y atención.",
@@ -75,9 +93,15 @@
         "phone": [
             "02254 44-7023"
         ],
-        "hs": [
-            "abierto de 10am a 20pm",
-            "lunes a sabados"
+        "apertura": 10,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes",
+            "sábado"
         ],
         "available": true,
         "info": "Este predio de padel cuenta con una tienda de accesorios, buena ubicacón y atención.",
@@ -97,9 +121,15 @@
         "phone": [
             "02254 447510"
         ],
-        "hs": [
-            "abierto de 10am a 20pm",
-            "lunes a sabados"
+        "apertura": 10,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes",
+            "sábado"
         ],
         "available": false,
         "info": "Este predio cuenta con 4 canchas de padel, con paredes de acrilico. Cuenta con una tienda de accesorios",
@@ -119,9 +149,15 @@
         "phone": [
             "no disponible"
         ],
-        "hs": [
-            "abierto de 10am a 20pm",
-            "lunes a sabados"
+        "apertura": 10,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes",
+            "sábado"
         ],
         "available": false,
         "info": "Este predio cuenta con 4 canchas de padel, con paredes de acrilico. Cuenta con una tienda de accesorios",
@@ -141,9 +177,15 @@
         "phone": [
             "02254 61-2909"
         ],
-        "hs": [
-            "abierto de 10am a 20pm",
-            "lunes a sabados"
+        "apertura": 10,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes",
+            "sábado"
         ],
         "available": false,
         "info": "Este predio de padel cuenta con una tienda de accesorios, buena ubicacón y atención.",
@@ -163,11 +205,17 @@
         "phone": [
             "02254 41-4361"
         ],
-        "hs": [
-            "abierto de 10am a 20pm",
-            "lunes a sabados"
+        "apertura": 10,
+        "cierre": 20,
+        "dias_abiertos": [
+            "lunes",
+            "martes",
+            "miércoles",
+            "jueves",
+            "viernes",
+            "sábado"
         ],
-        "available": false,
+        "available": true,
         "info": "Este predio cuenta con 4 canchas de padel, con paredes de acrilico. Cuenta con una tienda de accesorios",
         "courts": 3,
         "walls": "acrilico",

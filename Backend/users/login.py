@@ -10,7 +10,11 @@ from reader import read_user
 
 
 def save_usuario( psw: str, coincidencia: list[dict]) -> dict | None:
-    """Devuelve la cuenta coincidente con la contraseña, o None si no existe."""
+    """Precondición: recibe una contraseña y las cuentas con el usuario indicado.
+
+    Postcondición: devuelve la primera cuenta cuya contraseña coincide o
+    ``None`` si ninguna coincide; no modifica las cuentas.
+    """
     return next(
         (
             item for item in coincidencia
@@ -21,7 +25,11 @@ def save_usuario( psw: str, coincidencia: list[dict]) -> dict | None:
 
 
 def welcome(user: list[dict]) -> None:
-    """Muestra el saludo y abre el menú de la cuenta autenticada."""
+    """Precondición: ``user`` contiene la cuenta autenticada en la posición 0.
+
+    Postcondición: muestra el saludo y ejecuta el menú hasta que se cierre la
+    sesión; no devuelve un valor.
+    """
     plantilla = """
 ========================================================
             BIENVENIDO: {{ name | upper }}
@@ -32,7 +40,13 @@ def welcome(user: list[dict]) -> None:
 
 
 def iniciar_sesion_user() -> None:
-    """Autentica a una cuenta y regresa al menú principal al terminar."""
+    """Precondición: el archivo de usuarios puede leerse.
+
+    Postcondición: ante credenciales válidas, abre el menú de usuario y regresa
+    al terminar la sesión; ante un error de lectura o tres contraseñas
+    incorrectas, informa el problema y regresa. Si el nombre no existe, vuelve
+    a solicitarlo.
+    """
     try:
         datos = read_user()
     except (OSError, json.JSONDecodeError, ValueError) as error:

@@ -4,22 +4,32 @@ from jinja2 import Template
 from admins.admin import admin_menu_login
 
 def iniciar_sesion():
+    """Precondición: el módulo de acceso de usuarios está disponible.
+
+    Postcondición: inicia el flujo de autenticación y regresa cuando este
+    termina; no devuelve un valor.
+    """
 
     from users.login import iniciar_sesion_user
     iniciar_sesion_user()
 
 def registrarse():
+    """Precondición: el módulo de registro y sus archivos de datos están
+    disponibles.
 
-    """
-    ejecutara el archivos Registrarse para posterior ejecutar la funcion
-    cuenta_nueva , que se encargara de resgistrar al usuario
-    
+    Postcondición: inicia el registro de una cuenta y regresa al terminar; no
+    devuelve un valor.
     """
     from registrarse import cuenta_nueva # importamos la funcion desde el archivo 
 
     cuenta_nueva() # la llamamos aqui 
 
 def mi_funcion():
+    """Pre: están disponibles los flujos de registro, usuario y admin.
+
+    Post: muestra el menú principal y deriva las opciones elegidas;
+    termina cuando el usuario selecciona la opción 4.
+    """
     while True:
         plantilla= """
 ==============================================================
@@ -61,7 +71,13 @@ def mi_funcion():
 
 
 def main():
+    """Precondición: las dependencias y datos del backend están disponibles.
+
+    Postcondición: ejecuta el menú principal hasta que el usuario sale; no
+    devuelve un valor.
+    """
     mi_funcion()
 
+# Inicia el menú solo al ejecutar este archivo directamente, no al importarlo.
 if __name__ == '__main__':
     main()

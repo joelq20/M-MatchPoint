@@ -12,6 +12,13 @@ def _guardar_cambio(
     usuario_actualizado: dict,
     usuario_sesion: dict,
 ) -> None:
+    """Precondición: la lista contiene ``usuario_guardado`` y se recibió una
+    copia actualizada de esa cuenta.
+
+    Postcondición: persiste los usuarios y actualiza las referencias guardada y
+    de sesión. Si falla la escritura, propaga ``OSError`` y no actualiza ambas
+    referencias en memoria.
+    """
     
     # Sustituye solo el registro de la cuenta editada y conserva las demás.
     usuarios_actualizados = [
@@ -25,7 +32,11 @@ def _guardar_cambio(
 
 
 def _pedir_nuevo_usuario(usuarios: list[dict], user_id: object) -> str | None:
-    """Solicita un nombre de usuario no vacío y que no pertenezca a otra cuenta."""
+    """Precondición: recibe los usuarios cargados y el ID de la cuenta editada.
+
+    Postcondición: devuelve el nombre normalizado si no está vacío ni ocupado
+    por otra cuenta; si no cumple, informa y devuelve ``None``.
+    """
 
     nuevo_usuario = input("Ingrese el nuevo nombre de usuario: ").strip().lower()
     if not nuevo_usuario:
@@ -43,7 +54,11 @@ def _pedir_nuevo_usuario(usuarios: list[dict], user_id: object) -> str | None:
 
 
 def _pedir_nueva_edad() -> int | None:
-    """Solicita una edad entera dentro del rango permitido."""
+    """Precondición: ninguna; solicita una edad por consola.
+
+    Postcondición: devuelve un entero entre 18 y 90 inclusive; si la entrada no
+    es válida, informa el motivo y devuelve ``None``.
+    """
     try:
         nueva_edad = int(input("Ingrese la nueva edad: ").strip())
     except ValueError:
@@ -57,7 +72,11 @@ def _pedir_nueva_edad() -> int | None:
 
 
 def _pedir_nueva_contraseña(usuario_guardado: dict) -> str | None:
-    """Verifica la actual y confirma la nueva, eliminando sus espacios normales."""
+    """Precondición: ``usuario_guardado`` contiene la contraseña actual.
+
+    Postcondición: devuelve la nueva contraseña sin espacios si la actual es
+    correcta y la confirmación coincide; si no, informa y devuelve ``None``.
+    """
     
     contrasena_actual = input("Ingrese la contraseña actual: ")
     if contrasena_actual != usuario_guardado.get("psw"):
@@ -81,7 +100,12 @@ def _pedir_nueva_contraseña(usuario_guardado: dict) -> str | None:
 
 
 def user_account(usuario_sesion: dict) -> None:
-    """Muestra y permite modificar los datos de la cuenta de la sesión actual."""
+    """Precondición: ``usuario_sesion`` identifica una cuenta de usuario.
+
+    Postcondición: permite editar usuario, edad o contraseña; los cambios
+    aceptados se guardan y actualizan la sesión. Al volver o ante un error, sale
+    sin aplicar cambios pendientes.
+    """
     try:
         usuarios = read_user()
     except (OSError, json.JSONDecodeError, ValueError) as error:
