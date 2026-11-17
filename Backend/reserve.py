@@ -30,6 +30,7 @@ def _registrar_notificacion(evento: str, reserva: dict) -> None:
     Postcondición: intenta guardar la notificación; si falla, informa el error
     sin revertir la reserva ni propagar los errores esperados.
     """
+    # Los errores de notificación no cancelan la operación principal.
     try:
         agregar_notificacion(evento, reserva)
     except (OSError, json.JSONDecodeError, ValueError) as error:
@@ -44,35 +45,40 @@ class TurnoOcupadoError(ValueError):
     pass
 
 
-def _validar_date(value: str) -> str:
-    """Precondición: ``value`` es texto con formato AAAA-MM-DD.
+def _validar_date(value: str) -> str: 
+    """Precondición: ``value`` es texto.
 
     Postcondición: devuelve la fecha normalizada o lanza ``ValueError`` si el
-    formato o la fecha del calendario no son válidos. Acepta fechas pasadas.
+    formato o la fecha del calendario no son válidos.
+    Si ``value`` no es texto, ``re.fullmatch`` puede lanzar ``TypeError``.
     """
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value): # esto valida la fehca 
         raise ValueError("La fecha debe tener el formato AAAA-MM-DD.")
     try:
         return date.fromisoformat(value).isoformat()
     except ValueError as error:
-        raise ValueError("La fecha ingresada no es válida.") from error
+        raise ValueError("La fecha ingresada no es válida.") from error 
+
 
 
 def _validar_hora(value: str) -> str:
-    """Precondición: ``value`` es texto con formato HH:MM de 24 horas.
+    """Precondición: ``value`` es texto.
 
     Postcondición: devuelve la hora normalizada o lanza ``ValueError`` si no
-    representa una hora válida.
+    tiene formato HH:MM o no representa una hora válida. Si ``value`` no es
+    texto, ``re.fullmatch`` puede lanzar ``TypeError``.
     """
-    if not re.fullmatch(r"\d{2}:\d{2}", value):
+
+    if not re.fullmatch(r"\d{2}:\d{2}", value):# Comprueba que la hora tenga el formato HH:MM.
         raise ValueError("El horario debe tener el formato HH:MM.")
-    try:
-        return time.fromisoformat(value).isoformat(timespec="minutes")
+    
+    try: # valida que este dentro de un horario real
+        return time.fromisoformat(value).isoformat(timespec="minutes") 
     except ValueError as error:
         raise ValueError("El horario ingresado no es válido.") from error
 
 
-def _leer_reservaciones(path: Path) -> list[dict]:
+def _leer_reservaciones(path: Path) -> list[dict]: 
     """Precondición: ``path`` apunta al archivo JSON de reservas.
 
     Postcondición: devuelve una lista de diccionarios; si el archivo no existe,
@@ -84,42 +90,58 @@ def _leer_reservaciones(path: Path) -> list[dict]:
     with path.open("r", encoding="utf-8-sig") as file:
         reservations = json.load(file)
 
+    # Comprueba que el archivo contenga una lista y que cada elemento sea un diccionario.
     if not isinstance(reservations, list) or not all(
         isinstance(reservation, dict) for reservation in reservations
     ):
         raise ValueError("El archivo de reservas debe contener una lista de objetos.")
     return reservations
 
-
 def _horarios_de_una_hora(court: dict, fecha_reserva: str) -> list[str]:
-    """Precondición: la fecha es válida y la cancha tiene horas y días abiertos.
+    """Precondición: ``court`` es un diccionario y ``fecha_reserva`` es texto.
 
-    Postcondici?n: devuelve los inicios de turnos de una hora para esa fecha;
-    todav?a no filtra los horarios ocupados.
+    Postcondición: devuelve los inicios de turnos de una hora para esa fecha,
+    sin filtrar los ocupados; devuelve una lista vacía si la cancha no abre ese
+    día. Lanza ``ValueError`` si la fecha, los días abiertos o el horario de la
+    cancha no son válidos. Si ``court`` no es un diccionario, puede lanzar
+    ``AttributeError``.
     """
-    fecha = date.fromisoformat(_validar_date(fecha_reserva))
-    # weekday() devuelve lunes=0 y domingo=6.
+    fecha = date.fromisoformat(_validar_date(fecha_reserva)) # 
+
+    # Obtiene el día de la semana correspondiente a la fecha.
     dia_reserva = DIAS_SEMANA[fecha.weekday()]
-    dias_abiertos = court.get("dias_abiertos", [])
+
+    #obtiene  por get la clave de dias abiertos" en formato lista 
+    dias_abiertos = court.get("dias_abiertos", []) 
+
     if not isinstance(dias_abiertos, list):
         raise ValueError("Los días abiertos deben estar en una lista.")
+    
+    # Comprueba si la cancha está abierta ese día.
     if dia_reserva not in dias_abiertos:
         return []
 
     apertura = court.get("apertura")
     cierre = court.get("cierre")
-    if not isinstance(apertura, int) or isinstance(apertura, bool):
+
+    if type(apertura) != int:
         raise ValueError("La apertura debe ser una hora entera.")
-    if not isinstance(cierre, int) or isinstance(cierre, bool):
+    
+    if  type(cierre) != int:
         raise ValueError("El cierre debe ser una hora entera.")
+    
     if apertura < 0 or apertura > 23 or cierre < 1 or cierre > 24:
         raise ValueError("El horario contiene una hora fuera de rango.")
+    
     if cierre <= apertura:
         raise ValueError("El cierre debe ser posterior a la apertura.")
 
     horarios = []
+    # Genera los turnos de una hora desde la apertura hasta el cierre.
     for hora in range(apertura, cierre):
         horarios.append(f"{hora:02d}:00")
+        # El 02d muestra la hora con dos dígitos, agregando un 0 adelante si es necesario.
+
     return horarios
 
 
@@ -129,11 +151,15 @@ def _reserva_ocupa_horario(
     fecha_reserva: str,
     booking_time: str,
 ) -> bool:
-    """Precondición: reserva y parámetros usan cancha, fecha y hora comparables.
+    """Precondición: ``reserva`` es un diccionario; la cancha y la fecha son
+    comparables con sus datos y ``booking_time`` es una hora válida.
 
     Postcondición: devuelve ``True`` si coinciden cancha, fecha, hora y estado
-    activo; de lo contrario devuelve ``False``.
+    activo; de lo contrario devuelve ``False``. Lanza ``ValueError`` si la hora
+    de una reserva activa de esa cancha y fecha tiene un formato inválido.
     """
+
+    # Descarta reservas de otras canchas, fechas o que no estén activas.
     if (
         reserva.get("court_id") != court_id
         or reserva.get("date") != fecha_reserva
@@ -145,49 +171,60 @@ def _reserva_ocupa_horario(
     return hora_reservada == booking_time
 
 
-def horas_disponibles(
+def horas_disponibles( 
     court: dict,
     fecha_reserva: str,
     *,
     reservations_file: Path = RESERVATIONS_FILE,
 ) -> list[str]:
-    """Precondición: la cancha tiene ID y horario; la fecha tiene formato válido.
+    """Precondición: ``court`` es un diccionario con ``id``, días abiertos y
+    horario; ``fecha_reserva`` es texto.
 
-    Postcondición: devuelve los turnos de atención que no están ocupados en el
-    archivo indicado. Puede propagar errores de lectura o datos inválidos.
+    Postcondición: devuelve los turnos libres para la fecha indicada. Puede
+    lanzar ``ValueError`` si los datos son inválidos o errores al leer el archivo.
     """
     normalized_date = _validar_date(fecha_reserva)
     horarios = _horarios_de_una_hora(court, normalized_date)
     reservas = _leer_reservaciones(reservations_file)
-    return [
-        horario
-        for horario in horarios
-        if not any(
-            _reserva_ocupa_horario(
-                reserva,
-                court["id"],
-                normalized_date,
-                horario,
-            )
-            for reserva in reservas
-        )
-    ]
 
+    horarios_disponibles = []
+
+    for horario in horarios:
+        ocupado = False
+
+        for reserva in reservas:
+            if _reserva_ocupa_horario(
+                    reserva,
+                    court["id"],
+                    normalized_date,
+                    horario,
+                ):
+                ocupado = True
+                break
+
+        if not ocupado: # Agrega únicamente los horarios que no están ocupados.
+            horarios_disponibles.append(horario)
+
+    return horarios_disponibles          
+        
+# aqui termina  las funciones encargadas del horario 
 
 # Devuelve solo las reservas activas del usuario identificado en la sesión.
-def user_reservas(
+def user_reservas( 
     user: dict,
     *,
     reservations_file: Path = RESERVATIONS_FILE,
 ) -> list[dict]:
-    """Precondición: el usuario de sesión tiene un ID entero.
+    """Precondición: ``user`` es un diccionario con un ID entero.
 
     Postcondición: devuelve sus reservas activas en el orden del archivo; una
-    identidad inválida o un archivo ilegible produce una excepción.
+    identidad inválida produce ``ValueError``. Propaga errores de lectura,
+    JSON o estructura del archivo de reservas.
     """
     # El ID de sesión limita la consulta a las reservas de este usuario.
     user_id = user.get("id")
-    if not isinstance(user_id, int) or isinstance(user_id, bool):
+
+    if type(user_id) != int:
         raise ValueError("No se pudo identificar al usuario de la sesión.")
 
     reservations = _leer_reservaciones(reservations_file)
@@ -206,16 +243,22 @@ def cancelar_reserva(
     *,
     reservations_file: Path = RESERVATIONS_FILE,
 ) -> dict:
-    """Precondición: el usuario tiene ID entero y el número identifica, desde 1,
-    una reserva activa suya.
+    
+    """Precondición: ``user`` es un diccionario con ID entero y
+    ``reservation_number`` es un entero que identifica, desde 1, una reserva
+    activa suya.
 
     Postcondición: marca la reserva como ``cancelled``, guarda el historial y
-    devuelve el registro cancelado. Propaga errores al leer o guardar.
+    devuelve el registro cancelado. Lanza ``ValueError`` si la identidad, el
+    número o la posición no son válidos. Propaga errores de lectura, JSON,
+    estructura o escritura del archivo.
     """
     user_id = user.get("id")
-    if not isinstance(user_id, int) or isinstance(user_id, bool):
+    
+    if type(user_id) != int:
         raise ValueError("No se pudo identificar al usuario de la sesión.")
-    if not isinstance(reservation_number, int) or isinstance(reservation_number, bool):
+    
+    if type(reservation_number) != int:
         raise ValueError("El número de reserva no es válido.")
 
     reservations = _leer_reservaciones(reservations_file)
@@ -225,15 +268,18 @@ def cancelar_reserva(
         if reservation.get("user_id") == user_id
         and reservation.get("status", "active") == "active"
     ]
+
     if not 1 <= reservation_number <= len(reservas_usuario):
         raise ValueError("No existe una reserva activa con ese número.")
 
     reserva_elegida = reservas_usuario[reservation_number - 1]
     # Se conserva el registro y se libera el turno cambiando solo su estado.
     reserva_elegida["status"] = "cancelled"
+
     with reservations_file.open("w", encoding="utf-8") as file:
         json.dump(reservations, file, ensure_ascii=False, indent=4)
         file.write("\n")
+        
     _registrar_notificacion("Reserva cancelada", reserva_elegida)
     return reserva_elegida
 
@@ -246,33 +292,39 @@ def crear_reserva(
     *,
     reservations_file: Path = RESERVATIONS_FILE,
 ) -> dict:
-    """Precondición: usuario, cancha, fecha y hora son válidos; la cancha está
-    habilitada, el turno cae dentro de atención y no está ocupado.
+    """Precondición: ``user`` es un diccionario con ID entero y nombre de
+    usuario no vacío; ``court_id`` es entero; fecha y hora tienen formato
+    válido; los archivos de canchas y reservas son accesibles.
 
-    Postcondición: guarda y devuelve una reserva activa. Si falla el aviso, la
-    reserva permanece guardada y ``_registrar_notificacion`` informa el fallo.
+    Postcondición: guarda y devuelve la reserva activa. Lanza ``ValueError`` si
+    los datos no son válidos o el turno no está disponible. Si falla la
+    notificación, la reserva queda guardada.
     """
     # Valida primero la identidad y los datos para no guardar reservas incompletas.
     user_id = user.get("id")
     username = user.get("username")
-    if (
-        not isinstance(user_id, int)
-        or isinstance(user_id, bool)
-        or not isinstance(username, str)
-        or not username.strip()
-    ):
+
+    if type(user_id) != int or not isinstance(username, str) or not username.strip():
         raise ValueError("No se pudo identificar al usuario de la sesión.")
-    if not isinstance(court_id, int) or isinstance(court_id, bool):
+    
+    if type(court_id) != int: 
         raise ValueError("El identificador de la cancha no es válido.")
 
     normalizado_date = _validar_date(fecha_reserva)
     normalizado_time = _validar_hora(booking_time)
 
     courts = read_courts()
-    court = next((item for item in courts if item.get("id") == court_id), None)
+    court = None 
+
+    for item in courts:
+        if item.get("id") == court_id:# court_id es un numero en todo momento que recibe
+            court = item  
+            break
+
     if court is None:
         raise ValueError("No existe una cancha con ese identificador.")
-    if court.get("available") is not True:
+    
+    if court.get("available") is not True: 
         raise ValueError("La cancha no está habilitada para reservar.")
 
     horarios = _horarios_de_una_hora(court, normalizado_date)
@@ -283,21 +335,28 @@ def crear_reserva(
 
     # Comprueba conflictos antes de agregar la nueva reserva a la lista.
     reservations = _leer_reservaciones(reservations_file)
-    if any(
-        _reserva_ocupa_horario(
+    ocupado = False
+
+    for reservation in reservations:
+        if _reserva_ocupa_horario( 
             reservation,
             court_id,
             normalizado_date,
             normalizado_time,
-        )
-        for reservation in reservations
-    ):
-        raise TurnoOcupadoError(
-            "Ese turno ya está reservado para la cancha seleccionada."
-        )
+        ):
+            ocupado = True 
+            break
+
+    if ocupado:    
+        raise TurnoOcupadoError("Ese turno ya está reservado para la cancha seleccionada.")
 
     court_data = court.get("data", [])
-    court_name = court_data[0] if court_data else f"Cancha {court_id}"
+    if court_data:
+        court_name = court_data[0]
+    else:
+        court_name = f"Cancha {court_id}"
+    
+    
     reservation = {
         "user_id": user_id,
         "username": username.strip(),
@@ -308,6 +367,7 @@ def crear_reserva(
         "status": "active",
     }
     reservations.append(reservation)
+    
     with reservations_file.open("w", encoding="utf-8") as file:
         json.dump(reservations, file, ensure_ascii=False, indent=4)
         file.write("\n")
@@ -316,11 +376,13 @@ def crear_reserva(
     return reservation
 
 
-def confirm_court(court: dict, user: dict) -> bool:
-    """Precondición: recibe la cancha elegida y el usuario de la sesión.
+def confirm_court(court: dict, user: dict) -> bool: 
+    """Precondición: ``court`` es un diccionario de cancha con ID y ``user``
+    es el diccionario del usuario de la sesión.
 
     Postcondición: devuelve ``True`` si crea la reserva; devuelve ``False`` al
-    cancelar o cuando informa un error al usuario.
+    cancelar o cuando informa un error esperado de entrada, disponibilidad,
+    lectura, JSON o guardado. Los errores inesperados no capturados se propagan.
     """
     while True:
         fecha_reserva = input("Ingrese la fecha (AAAA-MM-DD, 0 para volver): ").strip()
@@ -350,6 +412,7 @@ TURNOS DISPONIBLES (1 HORA)
 {% endfor %}
         """
         print(Template(plantilla_horarios).render(horarios=horarios_disponibles))
+
         # La persona elige el índice mostrado; 0 cancela y vuelve al menú.
         while True:
             entrada_horario = input(
@@ -364,6 +427,7 @@ TURNOS DISPONIBLES (1 HORA)
                     booking_time = horarios_disponibles[numero_horario - 1]
                     break
                 print("X - OPCIÓN FUERA DE RANGO - X")
+
             except ValueError:
                 print("X - INGRESE SOLO NÚMEROS - X")
 
@@ -400,12 +464,12 @@ SU RESERVA HA SIDO CONFIRMADA CON EXITO
         detalles_reserva = """
 CANCHA: {{ court_name | upper }}
 FECHA: {{ date }}    HORARIO: {{ time }}
-        """
+        """ 
         print(Template(detalles_reserva).render(reserva))
         return True
 
 
-def elegir_court(courts: list[dict], user: dict) -> None:
+def elegir_court(courts: list[dict], user: dict) -> None: 
     """Precondición: ``courts`` contiene las canchas habilitadas para elegir.
 
     Postcondición: muestra y confirma la cancha elegida; con 0 regresa sin
@@ -443,7 +507,7 @@ ENTRENADOR: {{ "DISPONIBLES" if trainer else "NO DISPONIBLES" }}
     confirm_court(selec_court, user)
 
 
-def court_lista(user: dict) -> None:
+def court_lista(user: dict) -> None: 
     """Precondición: recibe el usuario autenticado.
 
     Postcondición: muestra las canchas y permite elegir una; si falla la lectura
