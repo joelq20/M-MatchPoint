@@ -12,39 +12,49 @@ from writer import write_courts
 from notifications import mostrar_notificaciones_admin
 
 def validar_dni()-> int:
-    """Precondición: el archivo de administradores puede leerse.
+    """Precondición: el archivo de administradores puede leerse y la entrada
+    estándar está disponible.
 
-    Postcondición: devuelve un DNI entero único de 7 u 8 dígitos; sigue
-    solicitándolo hasta recibir uno válido.
+    Postcondición: devuelve un DNI entero único de 7 u 8 dígitos, solicitándolo
+    de nuevo hasta recibir una entrada válida. Propaga errores al leer el archivo.
     """
-
-    data = read_admin() # ahora data poseea todo el contenido de disccionarios 
+    # Obtiene los administradores registrados para comprobar DNI duplicados
+    data = read_admin() 
 
     while True:
-        try:
-            dni= int(input("dni:  "))
-        except(ValueError):
+        
+        entrada = input("dni:  ").strip()
+
+         # Comprueba que la entrada contenga únicamente dígitos.
+        if not entrada.isascii() or not entrada.isdigit():
             print("X - ERROR DNI - USE SOLO NUMEROS - X")
             continue
 
-        duplicado = any(u.get("dni") == dni for u in data)
-        if duplicado: # si es dupli
+        # Comprueba que el DNI tenga entre 7 y 8 dígitos.
+        dni = int(entrada)
+        if not 7 <= len(str(dni)) <= 8:
+            print("X - DNI INVALIDO - X")
+            continue
+
+        duplicado = False
+        # Busca si el DNI ya pertenece a otro administrador.
+        for usuario in data:
+            if usuario.get("dni") == dni:
+                duplicado = True
+                break
+
+        if duplicado:
             print("X - DNI YA EXISTENTE - X")
             continue
 
-        
-        longitud = list(str(dni)) # conversion 
-        if len(longitud) >= 7 and len(longitud) <= 8: 
-                return dni
-        else:
-            print("X - DNI INVALIDO - X")
+        return dni
 
 
 def validar_name():
-    """Precondición: ninguna; solicita un nombre por consola.
+    """Precondición: la entrada estándar está disponible.
 
-    Postcondición: devuelve el nombre sin espacios externos si contiene solo
-    letras; en caso contrario, vuelve a solicitarlo.
+    Postcondición: devuelve el nombre sin espacios externos cuando contiene
+    solo letras; en caso contrario, vuelve a solicitarlo.
     """
 
     while True:
@@ -58,50 +68,68 @@ def validar_name():
             
 
 def validar_psw():
-    """Precondición: ninguna; solicita una contraseña por consola.
+    """Precondición: la entrada estándar está disponible.
 
     Postcondición: devuelve una contraseña de seis caracteres con al menos una
-    letra y un número; en caso contrario, vuelve a solicitarla.
+    letra y un dígito; en caso contrario, vuelve a solicitarla.
     """
 
     while True:
+        psw = input(
+            "Ingrese una contraseña de 6 caracteres que combine letras y números: "
+        )
 
-        psw = input("ingrese una contraseña de 6 caracteres que combine letras y numeros: ")
-        longi = list(psw)
-
-        contiene_letr = any(i.isalpha() for i in psw) #buscador de letras
-        contiene_num = any(i.isdigit() for i in psw)# buscador de numeros
-
-        if len(longi) == 6:
-            if contiene_letr and contiene_num:
-                return psw
-            else:
-                print("X - LA CONTRASEÑA DEBE CONTENER AL MENOS LETRAS Y NUMEROS- X")
-        elif len(longi) > 6:
+        if len(psw) > 6:
             print("X - ERROR - CONTRASEÑA DEMASIADO LARGA - X")
-        else:
+            continue
+
+        if len(psw) < 6:
             print("X - ERROR - CONTRASEÑA DEMASIADO CORTA - X")
+            continue
+
+        contiene_letr = False
+        contiene_num = False
+
+        # Recorre la contraseña para comprobar si contiene letras y números.
+        for caracter in psw:
+            if caracter.isalpha():
+                contiene_letr = True
+
+            if caracter.isdigit():
+                contiene_num = True
+
+        if contiene_letr and contiene_num:
+            return psw
+
+        print("X - LA CONTRASEÑA DEBE CONTENER AL MENOS LETRAS Y NUMEROS - X")
 
 def choose_court():
-    """Precondición: el archivo de canchas puede leerse.
+    """Precondición: el archivo de canchas puede leerse y la entrada estándar
+    está disponible.
 
-    Postcondición: muestra una cancha existente y devuelve su ID para asociarla
-    al administrador; repite la solicitud ante IDs inválidos.
-    """
-    data = read_courts() # vuelve a llamar al json correspondiente 
-
+    Postcondición: muestra la cancha cuyo ID se ingresó y devuelve ese ID;
+    vuelve a solicitarlo si no es un entero o no corresponde a una cancha.
+    Propaga errores al leer el archivo.
+    """ 
+    # Obtiene las canchas registradas en el archivo JSON.
+    data = read_courts()
 
     while True:
         try:
             id_empresa = int(input("INGRESE EL ID DE LA EMPRESA:  "))
-        except(ValueError):
-            print("X - INGRESE SOLO NÚMEROS - X")    
+        except ValueError:
+            print("X - INGRESE SOLO NÚMEROS - X")
             continue
-        
-        confirm = any(u.get("id") == id_empresa for u in data)
-        if confirm:
-            court = [i for i in data if i["id"] == id_empresa]
 
+        # Busca la cancha que coincide con el ID ingresado.
+        court = []
+
+        for empresa in data:
+            if empresa.get("id") == id_empresa:
+                court.append(empresa)
+                break
+
+        if court:
             plantilla = """
 ----------------------------------------------------------------
                     EMPRESA SELECCIONADA
@@ -112,10 +140,10 @@ def choose_court():
 {% endfor %}
 """
             mi_plantilla = Template(plantilla)
-            print(mi_plantilla.render(cancha = court))
+            print(mi_plantilla.render(cancha=court))
 
             return id_empresa
-        
+
         else:
             print("X - ID NO VÁLIDO - X")
 
@@ -129,6 +157,7 @@ def mostrar_admin_courts() -> None:
 
     try:
         courts = read_courts()
+
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"No se pudieron cargar las canchas: {error}")
         return
@@ -153,13 +182,15 @@ ESTADO: {{ "HABILITADA" if cancha.available else "NO DISPONIBLE" }}
         print("Opción inválida. Ingrese 0 para regresar.")
 
 
+
 def administrar_admin_courts() -> None:
-    """Precondición: el archivo contiene canchas con disponibilidad booleana.
+    """Precondición: los archivos de canchas están disponibles y la entrada
+    estándar está disponible.
 
-    Postcondición: si el administrador confirma, invierte y guarda el estado de
-    la cancha elegida; si cancela o ocurre un error, informa y regresa.
+    Postcondición: permite invertir y guardar la disponibilidad de una cancha
+    después de confirmarlo. Regresa si se cancela, no hay canchas o informa un
+    error de lectura, datos o escritura.
     """
-
     try:
         courts = read_courts()
     except (OSError, json.JSONDecodeError, ValueError) as error:
@@ -185,58 +216,71 @@ ESTADO ACTUAL: {{ "HABILITADA" if cancha.available else "BLOQUEADA" }}
 
     # Se vuelve a pedir el ID si no es numérico o no corresponde a una cancha.
     while True:
-
         entrada = input("Ingrese el ID de la cancha (0 para volver): ").strip()
         if entrada == "0":
             return
-        
+
         if not entrada.isdigit():
             print("Ingrese un ID numérico.")
             continue
 
         court_id = int(entrada)
-        court = next((item for item in courts if item.get("id") == court_id), None)
+        # Busca la cancha correspondiente al ID ingresado.
+        court = None
+
+        for item in courts:
+            if item.get("id") == court_id:
+                court = item
+                break
 
         if court is None:
             print("No existe una cancha con ese ID.")
             continue
 
-        if not isinstance(court.get("available"), bool): # si no ser bool
+        if not isinstance(court.get("available"), bool):
             print("No se puede cambiar el estado: el dato de disponibilidad no es válido.")
             return
 
-        # El nuevo estado siempre invierte el actual: habilitada pasa a bloqueada y viceversa.
+        # Invierte el estado actual de la cancha.
+        nuevo_estado = not court["available"]
 
-        nuevo_estado = not court["available"] # invierte el valor 
-        accion = "habilitar" if nuevo_estado else "bloquear" 
+        if nuevo_estado:
+            accion = "habilitar"
+        else:
+            accion = "bloquear"
 
         confirmacion = input(
             f"¿Confirma que desea {accion} esta cancha? (s/n): "
         ).strip().lower()
 
-        if confirmacion not in ("s", "si","sí"):
+        if confirmacion not in ("s", "si", "sí"):
             print("Cambio cancelado.")
             return
 
         # Solo se modifica y persiste después de que el administrador confirma.
-        court["available"] = nuevo_estado 
+        court["available"] = nuevo_estado
 
         try:
             write_courts(courts)
-        except OSError as error:
+        except (OSError, TypeError) as error:
             print(f"No se pudo guardar el estado de la cancha: {error}")
             return
 
-        estado = "habilitada" if nuevo_estado else "bloqueada"
+        if nuevo_estado:
+            estado = "habilitada"
+        else:
+            estado = "bloqueada"
+
         print(f"Cancha {estado} correctamente.")
         return
 
 
 def admin_menu(admin: dict) -> None:
-    """Precondición: ``admin`` es el administrador autenticado.
+    """Precondición: ``admin`` es el diccionario del administrador autenticado
+    y la entrada estándar está disponible.
 
-    Postcondición: dirige las opciones disponibles y regresa al seleccionar
-    cerrar sesión. La consulta administrativa de reservas sigue provisional.
+    Postcondición: muestra el menú y ejecuta la opción elegida hasta que el
+    administrador selecciona cerrar sesión.
     """
     plantilla = """
 ===================================================================
@@ -277,10 +321,10 @@ BIENVENIDO, {{ name | upper }}
 
 
 def iniciar_sesion_admin() -> dict | None:
-    """Precondición: el archivo de administradores puede leerse.
+    """Precondición: la entrada estándar está disponible.
 
-    Postcondición: devuelve el registro si coinciden DNI y contraseña; en caso
-    de credenciales incorrectas o error de lectura, informa y devuelve None.
+    Postcondición: devuelve el registro si coinciden DNI y contraseña; si las
+    credenciales son inválidas o falla la lectura, informa y devuelve ``None``.
     """
 
     try:
@@ -292,20 +336,23 @@ def iniciar_sesion_admin() -> dict | None:
     dni = input("DNI: ").strip()
     psw = input("Contraseña: ")
 
-    if not dni.isdigit() or not 7 <= len(dni) <= 8:
+    # Comprueba que el DNI tenga entre 7 y 8 dígitos.
+    if not dni.isascii() or not dni.isdigit() or not 7 <= len(dni) <= 8:
         print("DNI o contraseña incorrectos.")
         return None
 
-    admin = next(
-        (
-            item
-            for item in data
-            if item.get("dni") is not None
+    # Busca un administrador que coincida con las dos credenciales.
+    admin = None
+
+    for item in data:
+        if (
+            item.get("dni") is not None
             and str(item.get("dni")) == dni
             and item.get("psw") == psw
-        ),
-        None,
-    )
+        ):
+            admin = item
+            break
+
     if admin is None:
         print("DNI o contraseña incorrectos.")
         return None
@@ -313,41 +360,61 @@ def iniciar_sesion_admin() -> dict | None:
     print(f"INICIO DE SESIÓN CORRECTO. BIENVENIDO, {admin.get('name', '').upper()}.")
     return admin
 
-def registro_admin():
-    """Precondición: los datos solicitados son válidos y los archivos necesarios
-    de administradores y canchas pueden leerse y escribirse.
+def registro_admin() -> dict | None:
+    """Precondición: los archivos de administradores y canchas pueden leerse,
+    el archivo de administradores puede escribirse y la entrada estándar está
+    disponible.
 
-    Postcondición: agrega y devuelve el administrador asociado a una cancha;
-    propaga errores de lectura o escritura.
+    Postcondición: agrega y devuelve el administrador asociado a una cancha.
+    Si falla la escritura, informa y devuelve ``None``; los errores de lectura
+    se propagan a quien llama esta función.
     """
-    dni= validar_dni()
+
+    dni = validar_dni()
     name = validar_name()
     psw = validar_psw()
     idc = choose_court()
 
     data = read_admin()
-    admin_id = rn.randint(1_000_000, 99_000_000)
-    while any(admin.get("id") == admin_id for admin in data):
-        admin_id = rn.randint(1_000_000, 99_000_000)
 
-    new_admin = { "id": admin_id,
-                 "dni" : dni,
-                 "name": name,
-                 "psw" : psw,
-                 "court": idc
-    } 
+    # Genera un ID que no esté asignado a otro administrador.
+    admin_id = rn.randint(1_000_000, 99_000_000)
+
+    duplicado = True
+
+    while duplicado:
+        duplicado = False
+
+        for admin in data:
+            if admin.get("id") == admin_id:
+                duplicado = True
+                admin_id = rn.randint(1_000_000, 99_000_000)
+                break
+
+    new_admin = {
+        "id": admin_id,
+        "dni": dni,
+        "name": name,
+        "psw": psw,
+        "court": idc
+    }
 
     data.append(new_admin)
 
-    write_admin(data)
+    try:
+        write_admin(data)
+    except (OSError, TypeError, ValueError) as error:
+        print(f"No se pudo guardar el administrador: {error}")
+        return None
+
     print("ADMINISTRADOR REGISTRADO CORRECTAMENTE.")
     return new_admin
 
 def admin_menu_login():
-    """Precondición: ninguna; presenta el menú de acceso administrativo.
+    """Precondición: la entrada estándar está disponible.
 
-    Postcondición: regresa al menú principal al salir, tras una sesión exitosa o
-    después de agotar los tres intentos de inicio de sesión.
+    Postcondición: vuelve al menú principal al elegir salir, tras una sesión
+    exitosa o después de agotar los tres intentos de inicio de sesión.
     """
     plantilla = """
 --------------------------------------------------------
@@ -359,6 +426,7 @@ def admin_menu_login():
 
     """
     mi_plantilla = Template(plantilla)
+
     while True:
         print(mi_plantilla.render())
         try:
