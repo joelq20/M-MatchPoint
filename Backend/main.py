@@ -2,27 +2,8 @@
 # ejecutarlo desde otro lado no tirara nada 
 from jinja2 import Template
 from admins.admin import admin_menu_login
-
-def iniciar_sesion():
-    """Precondición: el módulo de acceso de usuarios está disponible.
-
-    Postcondición: inicia el flujo de autenticación y regresa cuando este
-    termina; no devuelve un valor.
-    """
-
-    from users.login import iniciar_sesion_user
-    iniciar_sesion_user()
-
-def registrarse():
-    """Precondición: el módulo de registro y sus archivos de datos están
-    disponibles.
-
-    Postcondición: inicia el registro de una cuenta y regresa al terminar; no
-    devuelve un valor.
-    """
-    from registrarse import cuenta_nueva # importamos la funcion desde el archivo 
-
-    cuenta_nueva() # la llamamos aqui 
+from registrarse import cuenta_nueva
+from users.login import iniciar_sesion_user
 
 def mi_funcion():
     """Pre: están disponibles los flujos de registro, usuario y admin.
@@ -53,10 +34,10 @@ def mi_funcion():
             continue
 
         if opcion == 1:
-            registrarse() # hecho 
+            cuenta_nueva()
 
         elif opcion == 2:
-            iniciar_sesion()# en proceso    
+            iniciar_sesion_user()
 
         elif opcion == 3:
             admin_menu_login()
