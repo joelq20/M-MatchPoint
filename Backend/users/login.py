@@ -9,19 +9,19 @@ from menu.menu import menu
 from reader import read_user
 
 
-def save_usuario( psw: str, coincidencia: list[dict]) -> dict | None:
+
+def save_usuario(psw: str, coincidencia: list[dict]) -> dict | None:
     """Precondición: recibe una contraseña y las cuentas con el usuario indicado.
 
     Postcondición: devuelve la primera cuenta cuya contraseña coincide o
-    ``None`` si ninguna coincide; no modifica las cuentas.
+    None si ninguna coincide; no modifica las cuentas.
     """
-    return next(
-        (
-            item for item in coincidencia
-            if item.get("psw") == psw
-        ),
-        None,
-    )
+    for item in coincidencia:
+        if item.get("psw") == psw:
+            return item
+
+    return None
+
 
 
 def welcome(user: list[dict]) -> None:
@@ -37,6 +37,7 @@ def welcome(user: list[dict]) -> None:
     """
     print(Template(plantilla).render(user[0]))
     menu(user)
+
 
 
 def iniciar_sesion_user() -> None:
@@ -63,16 +64,20 @@ Ingrese su nombre de usuario:
         """
         print(Template(plantilla).render())
 
-
         username = input("").strip().lower()
+
         # Conserva las cuentas con ese nombre para comprobar después la contraseña.
-        coincidencia = [user for user in datos if user.get("username") == username]
+        coincidencia = [
+            user for user in datos
+            if user.get("username") == username
+        ]
 
         if not coincidencia:
             print("EL USUARIO NO EXISTE.")
             continue
 
         intentos = 3
+
         while intentos > 0:
             plantilla = """
 =======================================================
@@ -83,6 +88,7 @@ Ingrese su contraseña:
             print(Template(plantilla).render())
 
             password = input("")
+
             # Comprueba la contraseña entre las cuentas que coinciden con el nombre.
             usuario = save_usuario(password, coincidencia)
 
@@ -91,8 +97,12 @@ Ingrese su contraseña:
                 return
 
             intentos -= 1
-            print(f"LA CONTRASEÑA ES INCORRECTA. Intentos restantes --> {intentos}")
+            print(
+                f"LA CONTRASEÑA ES INCORRECTA. "
+                f"Intentos restantes --> {intentos}"
+            )
 
         # Después de tres errores, termina el login para volver al menú principal.
         print("DEMASIADOS INTENTOS.")
         return
+

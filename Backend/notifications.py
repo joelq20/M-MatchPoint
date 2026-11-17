@@ -22,6 +22,7 @@ def _leer_notificaciones() -> list[dict]:
 
     with NOTIFICATIONS_FILE.open("r", encoding="utf-8-sig") as file:
         notifications = json.load(file)
+
     # Se valida la estructura antes de usar los registros o sobrescribir el archivo.
     if not isinstance(notifications, list) or not all(
         isinstance(notification, dict) for notification in notifications
@@ -100,6 +101,7 @@ Página {{ pagina }} de {{ total_paginas }}
         # Calcula el segmento de cinco avisos y lo invierte para mostrar el más nuevo primero.
         fin = len(notificaciones) - pagina * NOTIFICATIONS_PER_PAGE
         inicio = max(0, fin - NOTIFICATIONS_PER_PAGE)
+        
         pagina_actual = list(reversed(notificaciones[inicio:fin]))
         print(
             Template(plantilla).render(

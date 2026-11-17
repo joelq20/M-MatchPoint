@@ -13,6 +13,7 @@ from writer import write_user
 
 
 def pedir_texto_obligatorio(mensaje: str) -> str:
+
     while True:
         valor = input(mensaje).strip()
         if not valor: # si el valor(aux) esta vacio se reproduce el print 
@@ -21,31 +22,28 @@ def pedir_texto_obligatorio(mensaje: str) -> str:
             return valor.lower()
 
 
-def confirmar_edad()-> int:
+def confirmar_edad() -> int:
+    """Solicita una edad entre 18 y 90 años.
 
-    """Se pide validar que la edad ingresada este dentro de
-       los parametros limites que se imponen(de 18 a 90 años).
-       
-       Pre: Se pide una entrada con numeros enteros.
-       
-       Post: se retorna un numero entero 
+    Pre: ninguna.
+
+    Post: devuelve un número entero dentro del rango permitido.
     """
-    entrada_valida = False # revisar
-    while not entrada_valida: # mientras entrada_valida sea False 
-                # tambien podriamos hacer while true y ahorrarnos todo eso 
-        try: 
-            edad = int(input("Ingrese su edad:"))
+    entrada_valida = False
 
-        except(ValueError):
-            print("ERROR...INGRESE SOLO NUMEROS ENTEROS")
+    while not entrada_valida:
+        try:
+            edad = int(input("Ingrese su edad: "))
+
+        except ValueError:
+            print("ERROR... INGRESE SOLO NUMEROS ENTEROS")
             continue
 
-        if  edad  >= 18 and edad <= 90:
+        if edad >= 18 and edad <= 90:
             entrada_valida = True
-
             return edad
         else:
-            print("ERROR...INGRESE UNA EDAD ENTRE 18 Y 90")
+            print("ERROR... INGRESE UNA EDAD ENTRE 18 Y 90")
 
 
 def validacion_psw():
@@ -67,89 +65,102 @@ def validacion_psw():
         return psw
 
 def cuenta_nueva() -> list[dict] | None:
+    """Esta función recibe los datos necesarios para crear una nueva cuenta
+    y los guarda en el archivo JSON.
 
-    """Esta funcion recibe todos los datos del usuario que se 
-       piden en el registro, para la creación de una nueva cuenta.
-       Luego se escriben los datos en el archivo json
-       
-       Precondición: recibe strings y numeros. Todo los datos se guardan
-       en una variable diccionario.
-       
-       Postcondición: retorna una lista con los datos ingresados  
+    Precondición: la entrada estándar está disponible.
+
+    Postcondición: devuelve la lista actualizada de usuarios si el registro
+    se guarda correctamente; si falla la lectura o escritura del archivo,
+    informa el error y devuelve ``None``.
     """
     try:
-        datos = read_user()  # Carga las cuentas existentes para poder agregar la nueva.
-        
+        datos = read_user()
     except (OSError, json.JSONDecodeError, ValueError) as error:
+        print(f"No se pudieron cargar los usuarios: {error}")
+        return None
 
-        print(f"No se pudieron cargar los usuarios: {error}")  # Informa por qué falló.
-        return None  # Termina la función; no continúa con el registro.
-    
     plantilla = """
 =========================================================
                 MATCH POINT  REGISTRO
 =========================================================
     """
 
-    mi_plantilla = Template (plantilla)
+    mi_plantilla = Template(plantilla)
     print(mi_plantilla.render())
 
-    #ZONA DE INPUTS
-    id_usuario = rn.randint(100_000_000,999_000_000)
-    # Comprueba si el ID generado ya pertenece a alguna cuenta cargada.
+    # Genera un ID que no esté asignado a otra cuenta.
+    id_usuario = rn.randint(100_000_000, 999_000_000)
+    duplicado = True
 
-    while any(usuario.get("id") == id_usuario for usuario in datos):
-        # Si ya existe, genera otro y vuelve a comprobarlo.
-        id_usuario = rn.randint(100_000_000,999_000_000)
+    while duplicado:
+        duplicado = False
+
+        for usuario in datos:
+            if usuario.get("id") == id_usuario:
+                duplicado = True
+                id_usuario = rn.randint(100_000_000, 999_000_000)
+                break
 
     username = pedir_texto_obligatorio("Ingrese su nombre de usuario: ")
 
-    while any(usuario.get("username") == username for usuario in datos):
-        print(" nombre de usuario ya existente , pruebe otro porfavor")
+    # Comprueba que el nombre de usuario no esté registrado.
+    duplicado = False
+
+    for usuario in datos:
+        if usuario.get("username") == username:
+            duplicado = True
+            break
+
+    while duplicado:
+        print("Nombre de usuario ya existente, pruebe otro por favor.")
         username = pedir_texto_obligatorio("Ingrese su nombre de usuario: ")
-    
+
+        duplicado = False
+
+        for usuario in datos:
+            if usuario.get("username") == username:
+                duplicado = True
+                break
+
     firname = pedir_texto_obligatorio("Ingrese su nombre: ")
     secname = pedir_texto_obligatorio("Ingrese su apellido: ")
 
-    edad = confirmar_edad() # anteriores funciones 
-    psw = validacion_psw() 
+    edad = confirmar_edad()
+    psw = validacion_psw()
 
     lugar = pedir_texto_obligatorio(
         "Ingrese la ciudad donde reside actualmente: "
     )
+
     new_usuario = {
-        "id"  : id_usuario,
+        "id": id_usuario,
         "username": username,
         "name": firname,
-        "psw" : psw,
-
+        "psw": psw,
         "user": {
             "secname": secname,
             "years": edad,
             "location": lugar
-            }
+        }
     }
-    datos.append(new_usuario) # posterior lo prueba en el archivo 
+
+    datos.append(new_usuario)
 
     try:
         write_user(datos)
-
-    except OSError as error:
+    except (OSError, TypeError) as error:
         print(f"No se pudo guardar el registro: {error}")
         return None
-    
-    platilla = """
-    
-    
+
+    plantilla = """
 ==========================================================
-                !REGISTRO COMPLETADO! 
+                !REGISTRO COMPLETADO!
                 BIENVENIDO  {{ name | upper }}
-==========================================================  
-
-  
+==========================================================
     """
-    template = Template(platilla)
 
+    template = Template(plantilla)
     print(template.render(new_usuario))
-    
+
     return datos

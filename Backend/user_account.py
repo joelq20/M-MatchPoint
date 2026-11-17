@@ -16,8 +16,8 @@ def _guardar_cambio(
     copia actualizada de esa cuenta.
 
     Postcondición: persiste los usuarios y actualiza las referencias guardada y
-    de sesión. Si falla la escritura, propaga ``OSError`` y no actualiza ambas
-    referencias en memoria.
+    de sesión. Si falla la escritura, propaga ``OSError`` o ``TypeError`` y no
+    actualiza las referencias en memoria.
     """
     
     # Sustituye solo el registro de la cuenta editada y conserva las demás.
@@ -31,26 +31,37 @@ def _guardar_cambio(
     usuario_sesion.update(usuario_actualizado)
 
 
+
 def _pedir_nuevo_usuario(usuarios: list[dict], user_id: object) -> str | None:
     """Precondición: recibe los usuarios cargados y el ID de la cuenta editada.
 
     Postcondición: devuelve el nombre normalizado si no está vacío ni ocupado
-    por otra cuenta; si no cumple, informa y devuelve ``None``.
+    por otra cuenta; si no cumple, informa y devuelve None.
     """
 
     nuevo_usuario = input("Ingrese el nuevo nombre de usuario: ").strip().lower()
+
     if not nuevo_usuario:
         print("El nombre de usuario no puede quedar vacío.")
         return None
 
-    if any(
-        otro.get("id") != user_id
-        and str(otro.get("username", "")).strip().lower() == nuevo_usuario
-        for otro in usuarios
-    ):
+    # Comprueba si otra cuenta ya utiliza el nombre ingresado.
+    duplicado = False
+
+    for otro in usuarios:
+        if (
+            otro.get("id") != user_id
+            and str(otro.get("username", "")).strip().lower() == nuevo_usuario
+        ):
+            duplicado = True
+            break
+
+    if duplicado:
         print("Ese nombre de usuario ya está en uso.")
         return None
+
     return nuevo_usuario
+
 
 
 def _pedir_nueva_edad() -> int | None:
@@ -99,12 +110,15 @@ def _pedir_nueva_contraseña(usuario_guardado: dict) -> str | None:
     return nueva_contraseña
 
 
-def user_account(usuario_sesion: dict) -> None:
-    """Precondición: ``usuario_sesion`` identifica una cuenta de usuario.
 
-    Postcondición: permite editar usuario, edad o contraseña; los cambios
-    aceptados se guardan y actualizan la sesión. Al volver o ante un error, sale
-    sin aplicar cambios pendientes.
+def user_account(usuario_sesion: dict) -> None:
+    """Precondición: ``usuario_sesion`` es un diccionario con el ID de una
+    cuenta de usuario.
+
+    Postcondición: permite editar el nombre de usuario, la edad o la contraseña.
+    Guarda cada cambio válido y actualiza la sesión; vuelve al menú al elegir
+    ``0`` o si informa un error de lectura o escritura. Las entradas inválidas
+    no se guardan y permiten continuar en el menú de cuenta.
     """
     try:
         usuarios = read_user()
@@ -113,11 +127,15 @@ def user_account(usuario_sesion: dict) -> None:
         return
 
     user_id = usuario_sesion.get("id")
-    # Busca el registro persistido para asegurar que la edición corresponda a esta sesión.
-    usuario_guardado = next(
-        (usuario for usuario in usuarios if usuario.get("id") == user_id),
-        None,
-    )
+
+    # Busca el registro persistido correspondiente a la sesión actual.
+    usuario_guardado = None
+
+    for usuario in usuarios:
+        if usuario.get("id") == user_id:
+            usuario_guardado = usuario
+            break
+
     if usuario_guardado is None:
         print("No se encontró la cuenta del usuario conectado.")
         return
@@ -144,16 +162,20 @@ CIUDAD: {{ usuario.user.location | upper }}
         print(Template(plantilla).render(usuario=usuario_guardado))
 
         opcion = input("Seleccione una opción: ").strip()
+
         if opcion == "0":
             return
-        # Copia también el diccionario anidado para editarlo sin modificar el original antes de guardar.
+
+        # Copia el diccionario y sus datos internos para no modificar el original antes de guardar.
         usuario_actualizado = usuario_guardado.copy()
         usuario_actualizado["user"] = usuario_guardado.get("user", {}).copy()
 
         if opcion == "1":
             nuevo_usuario = _pedir_nuevo_usuario(usuarios, user_id)
+
             if nuevo_usuario is None:
                 continue
+
             usuario_actualizado["username"] = nuevo_usuario
 
         elif opcion == "2":
@@ -161,12 +183,15 @@ CIUDAD: {{ usuario.user.location | upper }}
 
             if nueva_edad is None:
                 continue
+
             usuario_actualizado["user"]["years"] = nueva_edad
 
         elif opcion == "3":
             nueva_contrasena = _pedir_nueva_contraseña(usuario_guardado)
+
             if nueva_contrasena is None:
                 continue
+
             usuario_actualizado["psw"] = nueva_contrasena
 
         else:
@@ -180,8 +205,9 @@ CIUDAD: {{ usuario.user.location | upper }}
                 usuario_actualizado,
                 usuario_sesion,
             )
-        except OSError as error:
+        except (OSError, TypeError) as error:
             print(f"No se pudo guardar el cambio: {error}")
             return
-        
+
         print("CAMBIO GUARDADO CORRECTAMENTE.")
+
